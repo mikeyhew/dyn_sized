@@ -28,22 +28,22 @@ pub trait DynSized {
             (meta, mem::transmute(data))
         }
     }
+}
 
-    fn size_of_val(meta: Self::Meta) -> usize {
-        let r = unsafe {
-            &*Self::assemble(meta, ptr::null())
-        };
+pub fn size_of_val<T: DynSized + ?Sized>(meta: T::Meta) -> usize {
+    let r = unsafe {
+        &*T::assemble(meta, ptr::null())
+    };
 
-        mem::size_of_val(r)
-    }
+    mem::size_of_val(r)
+}
 
-    fn align_of_val(meta: Self::Meta) -> usize {
-        let r = unsafe {
-            &*Self::assemble(meta, ptr::null())
-        };
+pub fn align_of_val<T: DynSized + ?Sized>(meta: T::Meta) -> usize {
+    let r = unsafe {
+        &*T::assemble(meta, ptr::null())
+    };
 
-        mem::align_of_val(r)
-    }
+    mem::align_of_val(r)
 }
 
 impl<T> DynSized for T {
