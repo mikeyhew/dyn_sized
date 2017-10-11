@@ -30,30 +30,28 @@ pub trait DynSized {
     }
 }
 
-pub unsafe trait AssembleSafe: DynSized {
-    fn assemble_safe(meta: Self::Meta, data: *const ()) -> *const Self {
-        unsafe { <Self as DynSized>::assemble(meta, data) }
-    }
+pub unsafe trait AssembleSafe: DynSized {}
 
-    fn assemble_mut_safe(meta: Self::Meta, data: *mut ()) -> *mut Self {
-        unsafe { <Self as DynSized>::assemble_mut(meta, data) }
-    }
+pub fn size_of_val<T>(meta: T::Meta) -> usize where
+    T: AssembleSafe + ?Sized
+{
+    unsafe {  align_of_val_unsafe::<T>(meta) }
 }
 
-pub fn size_of_val<T: AssembleSafe + ?Sized>(meta: T::Meta) -> usize {
-    let r = unsafe {
-        &*T::assemble(meta, ptr::null())
-    };
-
-    mem::size_of_val(r)
+pub unsafe fn size_of_val_unsafe<T>(meta: T::Meta) -> usize where
+    T: DynSized + ?Sized
+{
+    mem::size_of_val(&*T::assemble(meta, ptr::null()))
 }
 
-pub fn align_of_val<T: AssembleSafe + ?Sized>(meta: T::Meta) -> usize {
-    let r = unsafe {
-        &*T::assemble(meta, ptr::null())
-    };
+pub fn align_of_val<T>(meta: T::Meta) -> usize where
+    T: AssembleSafe + ?Sized
+{
+    unsafe { align_of_val_unsafe::<T>(meta) }
+}
 
-    mem::align_of_val(r)
+pub unsafe fn align_of_val_unsafe<T: AssembleSafe + ?Sized>(meta: T::Meta) -> usize {
+    mem::align_of_val(&*T::assemble(meta, ptr::null()))
 }
 
 pub struct WrapSized<T>(pub T);
