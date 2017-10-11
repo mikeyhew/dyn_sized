@@ -7,18 +7,19 @@ use core::raw;
 #[doc(hidden)]
 pub use core::{mem};
 
-/// A trait that is implemented for all types except trait objects, for which it can be derived with the `derive_DynSized!` macro on nightly. Provides functions to split apart/reconstruct a fat pointer into/from its components.
+/// A trait that is implemented for all types except trait objects and
+/// user-defined structs. Can be derived for trait ojects with the
+/// `derive_DynSized!` macro.
 pub trait DynSized {
     type Meta: Copy;
 
-    /// Make a reference from its constituent parts.
+    /// these should really be supplied by the compiler
     unsafe fn assemble(meta: Self::Meta, data: *const ()) -> *const Self;
 
     unsafe fn assemble_mut(meta: Self::Meta, data: *mut ()) -> *mut Self {
         mem::transmute(Self::assemble(meta, data))
     }
 
-    /// Break a reference down into its constituent parts.
     fn disassemble(ptr: *const Self) -> (Self::Meta, *const ());
 
     fn disassemble_mut(ptr: *mut Self) -> (Self::Meta, *mut ()) {
