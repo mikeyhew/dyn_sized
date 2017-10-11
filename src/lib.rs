@@ -30,7 +30,17 @@ pub trait DynSized {
     }
 }
 
-pub fn size_of_val<T: DynSized + ?Sized>(meta: T::Meta) -> usize {
+pub unsafe trait AssembleSafe: DynSized {
+    fn assemble_safe(meta: Self::Meta, data: *const ()) -> *const Self {
+        unsafe { <Self as DynSized>::assemble(meta, data) }
+    }
+
+    fn assemble_mut_safe(meta: Self::Meta, data: *mut ()) -> *mut Self {
+        unsafe { <Self as DynSized>::assemble_mut(meta, data) }
+    }
+}
+
+pub fn size_of_val<T: AssembleSafe + ?Sized>(meta: T::Meta) -> usize {
     let r = unsafe {
         &*T::assemble(meta, ptr::null())
     };
@@ -38,7 +48,7 @@ pub fn size_of_val<T: DynSized + ?Sized>(meta: T::Meta) -> usize {
     mem::size_of_val(r)
 }
 
-pub fn align_of_val<T: DynSized + ?Sized>(meta: T::Meta) -> usize {
+pub fn align_of_val<T: AssembleSafe + ?Sized>(meta: T::Meta) -> usize {
     let r = unsafe {
         &*T::assemble(meta, ptr::null())
     };
@@ -58,6 +68,8 @@ impl<T> DynSized for T {
     }
 }
 
+unsafe impl<T> AssembleSafe for T {}
+
 impl<T> DynSized for [T] {
     type Meta = usize;
 
@@ -70,6 +82,8 @@ impl<T> DynSized for [T] {
         (slice.len(), slice.as_ptr() as *const ())
     }
 }
+
+unsafe impl<T> AssembleSafe for [T] {}
 
 #[test]
 fn test_slice() {
@@ -94,6 +108,8 @@ impl DynSized for str {
         }
     }
 }
+
+unsafe impl AssembleSafe for str {}
 
 #[test]
 fn test_str() {
@@ -159,12 +175,16 @@ macro_rules! derive_DynSized {
         impl $crate::DynSized for $Trait {
             __derive_DynSized_body!($Trait);
         }
+
+        unsafe impl AssembleSafe for $Trait {}
     };
 
     ($Trait:ty, $($args:tt)+ ) => {
         impl<$($args)+> $crate::DynSized for $Trait {
             __derive_DynSized_body!($Trait);
         }
+
+        unsafe impl<$($args)+> AssembleSafe for $Trait {}
     };
 }
 
