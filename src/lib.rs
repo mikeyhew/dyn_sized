@@ -1,5 +1,5 @@
 #![no_std]
-#![feature(raw, allow_internal_unstable)]
+#![feature(raw, allow_internal_unstable, unboxed_closures)]
 
 
 use core::{str, slice, ptr};
@@ -190,6 +190,10 @@ macro_rules! derive_DynSized {
         unsafe impl<$($args)+> $crate::AssembleSafe for $Trait {}
     };
 }
+
+derive_DynSized!(FnOnce<Args, Output=O>, Args, O);
+derive_DynSized!(Fn<Args, Output=O>, Args, O);
+derive_DynSized!(FnMut<Args, Output=O>, Args, O);
 
 #[test]
 #[allow(non_snake_case)]
