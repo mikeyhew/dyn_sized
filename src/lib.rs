@@ -14,10 +14,12 @@ pub trait DynSized {
     type Meta: Copy;
 
     /// these should really be supplied by the compiler
-    unsafe fn assemble(meta: Self::Meta, data: *const ()) -> *const Self;
+    fn assemble(meta: Self::Meta, data: *const ()) -> *const Self;
 
-    unsafe fn assemble_mut(meta: Self::Meta, data: *mut ()) -> *mut Self {
-        mem::transmute(Self::assemble(meta, data))
+    fn assemble_mut(meta: Self::Meta, data: *mut ()) -> *mut Self {
+        unsafe {
+            mem::transmute(Self::assemble(meta, data))
+        }
     }
 
     fn disassemble(ptr: *const Self) -> (Self::Meta, *const ());
@@ -49,7 +51,7 @@ pub fn align_of_val<T: DynSized + ?Sized>(meta: T::Meta) -> usize {
 impl<T> DynSized for T {
     type Meta = ();
 
-    unsafe fn assemble(_: (), data: *const ()) -> *const T {
+    fn assemble(_: (), data: *const ()) -> *const T {
         data as *const T
     }
 
@@ -61,8 +63,10 @@ impl<T> DynSized for T {
 impl<T> DynSized for [T] {
     type Meta = usize;
 
-    unsafe fn assemble(len: usize, data: *const ()) -> *const [T] {
-        slice::from_raw_parts(data as *const T, len)
+    fn assemble(len: usize, data: *const ()) -> *const [T] {
+        unsafe {
+            slice::from_raw_parts(data as *const T, len)
+        }
     }
 
     fn disassemble(slice: *const [T]) -> (usize, *const ()) {
@@ -84,8 +88,10 @@ fn test_slice() {
 impl DynSized for str {
     type Meta = usize;
 
-    unsafe fn assemble(len: usize, data: *const ()) -> *const str {
-        str::from_utf8_unchecked(slice::from_raw_parts(data as *const u8, len))
+    fn assemble(len: usize, data: *const ()) -> *const str {
+        unsafe {
+            str::from_utf8_unchecked(slice::from_raw_parts(data as *const u8, len))
+        }
     }
 
     fn disassemble(s: *const str) -> (usize, *const ()) {
@@ -137,10 +143,12 @@ macro_rules! __derive_DynSized_body {
     ($Trait:ty) => {
         type Meta = $crate::Vtable;
 
-        unsafe fn assemble(vtable: $crate::Vtable, data: *const ()) -> *const Self {
-            $crate::mem::transmute(
-                $crate::TraitObject::construct(vtable, data as *mut ())
-            )
+        fn assemble(vtable: $crate::Vtable, data: *const ()) -> *const Self {
+            unsafe {
+                $crate::mem::transmute(
+                    $crate::TraitObject::construct(vtable, data as *mut ())
+                )
+            }
         }
 
         fn disassemble(ptr: *const Self) -> (Self::Meta, *const ()) {
