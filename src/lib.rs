@@ -194,6 +194,7 @@ macro_rules! derive_DynSized {
 derive_DynSized!(FnOnce<Args, Output=O>, Args, O);
 derive_DynSized!(Fn<Args, Output=O>, Args, O);
 derive_DynSized!(FnMut<Args, Output=O>, Args, O);
+derive_DynSized!(core::any::Any);
 
 #[test]
 #[allow(non_snake_case)]
