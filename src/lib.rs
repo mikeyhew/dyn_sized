@@ -56,19 +56,22 @@ pub fn align_of_val<T: AssembleSafe + ?Sized>(meta: T::Meta) -> usize {
     mem::align_of_val(r)
 }
 
-impl<T> DynSized for T {
+pub struct WrapSized<T>(pub T);
+
+
+impl<T> DynSized for WrapSized<T> {
     type Meta = ();
 
-    unsafe fn assemble(_: (), data: *const ()) -> *const T {
-        data as *const T
+    unsafe fn assemble(_: (), data: *const ()) -> *const WrapSized<T> {
+        data as *const WrapSized<T>
     }
 
-    fn disassemble(ptr: *const T) -> ((), *const ()) {
+    fn disassemble(ptr: *const WrapSized<T>) -> ((), *const ()) {
         ((), ptr as *const ())
     }
 }
 
-unsafe impl<T> AssembleSafe for T {}
+// unsafe impl<T> AssembleSafe for T {}
 
 impl<T> DynSized for [T] {
     type Meta = usize;
