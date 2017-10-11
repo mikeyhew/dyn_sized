@@ -176,7 +176,7 @@ macro_rules! derive_DynSized {
             __derive_DynSized_body!($Trait);
         }
 
-        unsafe impl AssembleSafe for $Trait {}
+        unsafe impl $crate::AssembleSafe for $Trait {}
     };
 
     ($Trait:ty, $($args:tt)+ ) => {
@@ -184,7 +184,7 @@ macro_rules! derive_DynSized {
             __derive_DynSized_body!($Trait);
         }
 
-        unsafe impl<$($args)+> AssembleSafe for $Trait {}
+        unsafe impl<$($args)+> $crate::AssembleSafe for $Trait {}
     };
 }
 
