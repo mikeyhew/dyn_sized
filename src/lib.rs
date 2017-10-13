@@ -53,20 +53,10 @@ pub fn size_of_val<T>(meta: T::Meta) -> usize where
     unsafe {  align_of_val_unsafe::<T>(meta) }
 }
 
-pub unsafe fn size_of_val_unsafe<T>(meta: T::Meta) -> usize where
-    T: DynSized + ?Sized
-{
-    mem::size_of_val(&*T::assemble(meta, ptr::null()))
-}
-
 pub fn align_of_val<T>(meta: T::Meta) -> usize where
     T: AssembleSafe + ?Sized
 {
     unsafe { align_of_val_unsafe::<T>(meta) }
-}
-
-pub unsafe fn align_of_val_unsafe<T: AssembleSafe + ?Sized>(meta: T::Meta) -> usize {
-    mem::align_of_val(&*T::assemble(meta, ptr::null()))
 }
 
 /// A wrapper type for `Sized` types that implements `DynSized`. This is unfortunately
