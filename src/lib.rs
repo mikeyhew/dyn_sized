@@ -1,11 +1,11 @@
-#![feature(raw, allow_internal_unstable, unboxed_closures, fnbox)]
+#![no_std]
+#![feature(raw, allow_internal_unstable, unboxed_closures)]
+#![cfg_attr(fnbox, feature(fnbox))]
 
-
-use std::{str, slice, ptr};
-use std::raw;
-use std::boxed::FnBox;
+use core::{str, slice, ptr};
+use core::raw;
 #[doc(hidden)]
-pub use std::{mem};
+pub use core::{mem};
 
 /// A trait that is implemented for all types except trait objects and
 /// user-defined structs. Can be derived for trait ojects with the
@@ -189,16 +189,10 @@ macro_rules! derive_DynSized {
     };
 }
 
-derive_DynSized!(FnOnce<Args, Output=Output>, Args, Output);
-derive_DynSized!(Fn<Args, Output=Output>, Args, Output);
-derive_DynSized!(FnMut<Args, Output=Output>, Args, Output);
-derive_DynSized!(FnBox<Args, Output=Output>, Args, Output);
-derive_DynSized!(std::any::Any);
-
 #[test]
 #[allow(non_snake_case)]
 fn test_derive_DynSized() {
-    use std::borrow::Borrow;
+    use core::borrow::Borrow;
     trait MyBorrow<Borrowed>: Borrow<Borrowed> {}
     derive_DynSized!(MyBorrow<Borrowed>, Borrowed);
 }
