@@ -26,6 +26,21 @@ pub trait DynSized {
             (meta, mem::transmute(data))
         }
     }
+
+    fn meta(&self) -> Self::Meta {
+        let (meta, _) = Self::disassemble(self);
+        meta
+    }
+
+    fn data(&self) -> *const () {
+        let (_, data) = Self::disassemble(self);
+        data
+    }
+
+    fn data_mut(&mut self) -> *mut () {
+        let (_, data) = Self::disassemble_mut(self);
+        data
+    }
 }
 
 /// A marker trait indicating that a type's assemble methods are safe, because they do not
@@ -220,16 +235,18 @@ fn test_derive_DynSized() {
 /// to built-in pointer types
 pub trait PtrExt {
     type Referent: DynSized + ?Sized;
-    type DataPtr: Copy;
 
     fn meta(&self) -> <Self::Referent as DynSized>::Meta;
     
-    fn data(&self) -> Self::DataPtr;
+    fn data(&self) -> *const ();
+}
+
+pub trait PtrMutExt: PtrExt {
+    fn data_mut(&self) -> *mut ();
 }
 
 impl<T: DynSized + ?Sized> PtrExt for *const T {
     type Referent = T;
-    type DataPtr = *const ();
 
     fn meta(&self) -> T::Meta  {
         let (meta, _) = T::disassemble(*self);
@@ -242,43 +259,24 @@ impl<T: DynSized + ?Sized> PtrExt for *const T {
     }
 }
 
-impl<'a, T: DynSized + ?Sized + 'a> PtrExt for &'a T {
+impl<T: DynSized + ?Sized> PtrExt for *mut T {
     type Referent = T;
-    type DataPtr = *const ();
 
     fn meta(&self) -> T::Meta  {
         (*self as *const T).meta()
     }
 
     fn data(&self) -> *const () {
-        (*self as *const T).data()
-    }
-}
-
-impl<T: DynSized + ?Sized> PtrExt for *mut T {
-    type Referent = T;
-    type DataPtr = *mut ();
-
-    fn meta(&self) -> T::Meta  {
-        (*self as *const T).meta()
-    }
-
-    fn data(&self) -> *mut () {
-        let (_, data) = T::disassemble_mut(*self);
+        let (_, data) = T::disassemble(*self);
         data
     }
 }
 
-impl<'a, T: DynSized + ?Sized + 'a> PtrExt for &'a mut T {
-    type Referent = T;
-    type DataPtr = *mut ();
+impl<T: DynSized + ?Sized> PtrMutExt for *mut T {
 
-    fn meta(&self) -> T::Meta  {
-        (*self as *const T).meta()
-    }
-
-    fn data(&self) -> *mut () {
-        (*self as *const T as *mut T).data()
+    fn data_mut(&self) -> *mut () {
+        let (_, data) = T::disassemble_mut(*self);
+        data
     }
 }
 
@@ -296,12 +294,17 @@ fn test_PtrExt() {
     let len: <[i32] as DynSized>::Meta = (slice as *const [i32]).meta();
     assert_eq!(len, 3usize);
 
-    let data: *mut () = slice.data();
-    assert_eq!(slice as *mut [_] as *mut (), data);
+    let data: *const () = slice.data();
+    assert_eq!(slice as *const [_] as *const (), data);
     let data: *const () = (slice as &[i32]).data();
     assert_eq!(slice as *const [_] as *const (), data);
-    let data: *mut () = (slice as *mut [i32]).data();
-    assert_eq!(slice as *mut [_] as *mut (), data);
     let data: *const () = (slice as *const [i32]).data();
     assert_eq!(slice as *const [_] as *const (), data);
+    let data: *const () = (slice as *mut [i32]).data();
+    assert_eq!(slice as *const [_] as *const (), data);
+
+    let data: *mut () = slice.data_mut();
+    assert_eq!(slice as *mut [_] as *mut (), data);
+    let data: *mut () = (slice as *mut [i32]).data_mut();
+    assert_eq!(slice as *mut [_] as *mut (), data);
 }
