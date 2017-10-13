@@ -72,6 +72,7 @@ pub unsafe fn align_of_val_unsafe<T: AssembleSafe + ?Sized>(meta: T::Meta) -> us
 /// A wrapper type for `Sized` types that implements `DynSized`. This is unfortunately
 /// necessary because a blanket `impl` of `DynSized` for all `Sized` types would conflict
 /// with implementations for user-defined structs that are ?Sized.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct WrapSized<T>(pub T);
 
 impl<T> DynSized for WrapSized<T> {
@@ -143,7 +144,7 @@ fn test_str() {
 #[doc(hidden)]
 pub struct TraitObject(raw::TraitObject);
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 #[doc(hidden)]
 pub struct Vtable(*mut ());
 
