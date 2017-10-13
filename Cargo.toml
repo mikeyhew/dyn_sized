@@ -4,3 +4,4 @@ version = "0.1.0"
 authors = ["Michael Hewson <michael@michaelhewson.ca>"]
 
 [dependencies]
+fn_move = { git = "https://github.com/mikeyhew/fn_move.git" }

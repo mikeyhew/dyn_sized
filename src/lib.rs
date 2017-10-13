@@ -1,6 +1,7 @@
 #![no_std]
 #![feature(raw, unboxed_closures)]
-#![cfg_attr(fnbox, feature(fnbox))]
+
+extern crate fn_move;
 
 use core::{str, slice, ptr};
 use core::raw;
@@ -213,6 +214,22 @@ macro_rules! derive_DynSized {
         unsafe impl<$($args)+> $crate::AssembleSafe for $Trait {}
     };
 }
+
+use core::any::Any;
+use fn_move::FnMove;
+
+derive_DynSized!(Any);
+derive_DynSized!(Any + Send);
+derive_DynSized!(Fn<Args, Output=Output> + 'a, 'a, Args, Output);
+derive_DynSized!(Fn<Args, Output=Output> + Send + 'a, 'a, Args, Output);
+derive_DynSized!(Fn<Args, Output=Output> + Sync + 'a, 'a, Args, Output);
+derive_DynSized!(Fn<Args, Output=Output> + Send + Sync + 'a, 'a, Args, Output);
+derive_DynSized!(FnMut<Args, Output=Output> + 'a, 'a, Args, Output);
+derive_DynSized!(FnMut<Args, Output=Output> + Send + 'a, 'a, Args, Output);
+derive_DynSized!(FnOnce<Args, Output=Output> + 'a, 'a, Args, Output);
+derive_DynSized!(FnOnce<Args, Output=Output> + Send + 'a, 'a, Args, Output);
+derive_DynSized!(FnMove<Args, Output=Output> + 'a, 'a, Args, Output);
+derive_DynSized!(FnMove<Args, Output=Output> + Send + 'a, 'a, Args, Output);
 
 #[test]
 #[allow(non_snake_case)]
