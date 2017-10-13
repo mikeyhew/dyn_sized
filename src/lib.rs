@@ -1,5 +1,5 @@
 #![no_std]
-#![feature(raw, allow_internal_unstable, unboxed_closures)]
+#![feature(raw, unboxed_closures)]
 #![cfg_attr(fnbox, feature(fnbox))]
 
 use core::{str, slice, ptr};
@@ -149,7 +149,6 @@ impl TraitObject {
 
 #[macro_export]
 #[doc(hidden)]
-#[allow_internal_unstable]
 macro_rules! __derive_DynSized_body {
     ($Trait:ty) => {
         type Meta = $crate::Vtable;
