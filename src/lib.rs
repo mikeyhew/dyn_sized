@@ -50,13 +50,13 @@ pub unsafe trait AssembleSafe: DynSized {}
 pub fn size_of_val<T>(meta: T::Meta) -> usize where
     T: AssembleSafe + ?Sized
 {
-    unsafe {  align_of_val_unsafe::<T>(meta) }
+    unsafe {  mem::size_of_val(&*T::assemble(meta, ptr::null())) }
 }
 
 pub fn align_of_val<T>(meta: T::Meta) -> usize where
     T: AssembleSafe + ?Sized
 {
-    unsafe { align_of_val_unsafe::<T>(meta) }
+    unsafe {  mem::align_of_val(&*T::assemble(meta, ptr::null())) }
 }
 
 /// A wrapper type for `Sized` types that implements `DynSized`. This is unfortunately
