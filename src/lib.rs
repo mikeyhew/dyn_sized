@@ -268,7 +268,19 @@ fn test_PtrExt() {
 
     let len: <[i32] as DynSized>::Meta = slice.meta();
     assert_eq!(len, 3usize);
+    let len: <[i32] as DynSized>::Meta = (slice as &[i32]).meta();
+    assert_eq!(len, 3usize);
+    let len: <[i32] as DynSized>::Meta = (slice as *mut [i32]).meta();
+    assert_eq!(len, 3usize);
+    let len: <[i32] as DynSized>::Meta = (slice as *const [i32]).meta();
+    assert_eq!(len, 3usize);
 
     let data: *mut () = slice.data();
     assert_eq!(slice as *mut [_] as *mut (), data);
+    let data: *const () = (slice as &[i32]).data();
+    assert_eq!(slice as *const [_] as *const (), data);
+    let data: *mut () = (slice as *mut [i32]).data();
+    assert_eq!(slice as *mut [_] as *mut (), data);
+    let data: *const () = (slice as *const [i32]).data();
+    assert_eq!(slice as *const [_] as *const (), data);
 }
