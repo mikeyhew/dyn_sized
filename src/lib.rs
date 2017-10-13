@@ -69,7 +69,7 @@ impl<T> DynSized for WrapSized<T> {
     }
 }
 
-// unsafe impl<T> AssembleSafe for T {}
+unsafe impl<T> AssembleSafe for WrapSized<T> {}
 
 impl<T> DynSized for [T] {
     type Meta = usize;
