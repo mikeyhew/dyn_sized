@@ -7,13 +7,11 @@ use core::raw;
 #[doc(hidden)]
 pub use core::{mem};
 
-/// A trait that is implemented for all types except trait objects and
-/// user-defined structs. Can be derived for trait ojects with the
-/// `derive_DynSized!` macro.
+/// A trait for dynamically sized types, similar in principle to the `Sized`
+/// trait. Allows conversion between fat and thin pointers.
 pub trait DynSized {
     type Meta: Copy;
 
-    /// these should really be supplied by the compiler
     unsafe fn assemble(meta: Self::Meta, data: *const ()) -> *const Self;
 
     unsafe fn assemble_mut(meta: Self::Meta, data: *mut ()) -> *mut Self {
@@ -30,6 +28,8 @@ pub trait DynSized {
     }
 }
 
+/// A marker trait indicating that a type's assemble methods are safe, because they do not
+/// dereference the data pointer.
 pub unsafe trait AssembleSafe: DynSized {}
 
 pub fn size_of_val<T>(meta: T::Meta) -> usize where
@@ -54,8 +54,10 @@ pub unsafe fn align_of_val_unsafe<T: AssembleSafe + ?Sized>(meta: T::Meta) -> us
     mem::align_of_val(&*T::assemble(meta, ptr::null()))
 }
 
+/// A wrapper type for `Sized` types that implements `DynSized`. This is unfortunately
+/// necessary because a blanket `impl` of `DynSized` for all `Sized` types would conflict
+/// with implementations for user-defined structs that are ?Sized.
 pub struct WrapSized<T>(pub T);
-
 
 impl<T> DynSized for WrapSized<T> {
     type Meta = ();
@@ -169,6 +171,24 @@ macro_rules! __derive_DynSized_body {
     };
 }
 
+/// Derives the `DynSized` trait for trait objects.
+/// 
+/// To use:
+/// 
+/// ```
+/// #[macro_use] extern crate dyn_sized;
+/// # fn main() {
+/// trait MyTrait {}
+/// derive_DynSized!(MyTrait);
+/// 
+/// trait MyGenericTrait<'a, T: 'a> {
+///     fn foo(&'a self) -> T;
+/// }
+/// // type arguments for the impl go after the trait object type.
+/// derive_DynSized!(MyGenericTrait<'a, T>, 'a, T: 'a);
+/// # }
+/// ```
+/// 
 #[macro_export]
 macro_rules! derive_DynSized {
     ($Trait:ty) => {
@@ -196,6 +216,8 @@ fn test_derive_DynSized() {
     derive_DynSized!(MyBorrow<Borrowed>, Borrowed);
 }
 
+/// An extension trait adding .meta() and .data() convenience methods
+/// to built-in pointer types
 pub trait PtrExt {
     type Referent: DynSized + ?Sized;
     type DataPtr: Copy;
