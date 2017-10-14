@@ -1,5 +1,9 @@
 #![no_std]
 #![feature(raw, unboxed_closures)]
+/*!
+Provides the `DynSized` trait, which allows conversion between fat pointers and their (meta, data_pointer) components. `derive_DynSized!` may be used to implement `DynSized` for trait objects.
+*/
+
 
 extern crate fn_move;
 
@@ -44,25 +48,28 @@ pub trait DynSized {
     }
 }
 
-/// A marker trait indicating that a type's assemble methods are safe, because they do not
-/// dereference the data pointer.
+/// A marker trait for types implementing `DynSized`, indicating that the assemble methods are safe because they do not dereference the data pointer.
+/// 
+/// In particular, this means that `Self::Meta` contains all the information necessary to determine the type's size and alignment.
 pub unsafe trait AssembleSafe: DynSized {}
 
+/// A version of mem::size_of_val that requires only the pointer metadata
 pub fn size_of_val<T>(meta: T::Meta) -> usize where
     T: AssembleSafe + ?Sized
 {
     unsafe {  mem::size_of_val(&*T::assemble(meta, ptr::null())) }
 }
 
+/// A version of mem::align_of_val that requires only the pointer metadata
 pub fn align_of_val<T>(meta: T::Meta) -> usize where
     T: AssembleSafe + ?Sized
 {
     unsafe {  mem::align_of_val(&*T::assemble(meta, ptr::null())) }
 }
 
-/// A wrapper type for `Sized` types that implements `DynSized`. This is unfortunately
-/// necessary because a blanket `impl` of `DynSized` for all `Sized` types would conflict
-/// with implementations for user-defined structs that are ?Sized.
+/// A wrapper type for `Sized` types that implements `DynSized`.
+/// 
+/// This is unfortunately necessary because a blanket `impl` of `DynSized` for all `Sized` types would conflict with implementations for user-defined structs that are ?Sized.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct WrapSized<T>(pub T);
 
@@ -249,6 +256,7 @@ pub trait PtrExt {
     fn data(&self) -> *const ();
 }
 
+/// adds the `data_mut` method to `*mut T`
 pub trait PtrMutExt: PtrExt {
     fn data_mut(&self) -> *mut ();
 }
