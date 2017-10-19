@@ -14,13 +14,23 @@ pub use core::{mem};
 
 /// A trait for dynamically sized types, similar in principle to the `Sized`
 /// trait. Allows conversion between fat and thin pointers.
-pub trait DynSized {
+///
+/// The assemble and disassemble methods must be safe, i.e. they must not dereference the raw pointers, only use them to extract the metadata in the case of `disassemble`, or to combine with metadata to produce a fat pointer, in the case of `assemble`.
+///
+/// # Unsafety
+///
+/// The trait is marked `unsafe`, because implementing it wrong can cause undefined behaviour.
+pub unsafe trait DynSized {
     type Meta: Copy;
 
-    unsafe fn assemble(meta: Self::Meta, data: *const ()) -> *const Self;
+    fn assemble(meta: Self::Meta, data: *const ()) -> *const Self;
 
-    unsafe fn assemble_mut(meta: Self::Meta, data: *mut ()) -> *mut Self {
-        mem::transmute(Self::assemble(meta, data))
+    fn assemble_mut(meta: Self::Meta, data: *mut ()) -> *mut Self {
+        unsafe {
+            // transmute is safe here, because we're just changing from
+            // *const Self to *mut Self
+            mem::transmute(Self::assemble(meta, data))
+        }
     }
 
     fn disassemble(ptr: *const Self) -> (Self::Meta, *const ());
@@ -48,21 +58,16 @@ pub trait DynSized {
     }
 }
 
-/// A marker trait for types implementing `DynSized`, indicating that the assemble methods are safe because they do not dereference the data pointer.
-/// 
-/// In particular, this means that `Self::Meta` contains all the information necessary to determine the type's size and alignment.
-pub unsafe trait AssembleSafe: DynSized {}
-
 /// A version of mem::size_of_val that requires only the pointer metadata
 pub fn size_of_val<T>(meta: T::Meta) -> usize where
-    T: AssembleSafe + ?Sized
+    T: DynSized + ?Sized
 {
     unsafe {  mem::size_of_val(&*T::assemble(meta, ptr::null())) }
 }
 
 /// A version of mem::align_of_val that requires only the pointer metadata
 pub fn align_of_val<T>(meta: T::Meta) -> usize where
-    T: AssembleSafe + ?Sized
+    T: DynSized + ?Sized
 {
     unsafe {  mem::align_of_val(&*T::assemble(meta, ptr::null())) }
 }
@@ -73,10 +78,10 @@ pub fn align_of_val<T>(meta: T::Meta) -> usize where
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct WrapSized<T>(pub T);
 
-impl<T> DynSized for WrapSized<T> {
+unsafe impl<T> DynSized for WrapSized<T> {
     type Meta = ();
 
-    unsafe fn assemble(_: (), data: *const ()) -> *const WrapSized<T> {
+    fn assemble(_: (), data: *const ()) -> *const WrapSized<T> {
         data as *const WrapSized<T>
     }
 
@@ -85,13 +90,13 @@ impl<T> DynSized for WrapSized<T> {
     }
 }
 
-unsafe impl<T> AssembleSafe for WrapSized<T> {}
-
-impl<T> DynSized for [T] {
+unsafe impl<T> DynSized for [T] {
     type Meta = usize;
 
-    unsafe fn assemble(len: usize, data: *const ()) -> *const [T] {
-        slice::from_raw_parts(data as *const T, len)
+    fn assemble(len: usize, data: *const ()) -> *const [T] {
+        unsafe {
+            slice::from_raw_parts(data as *const T, len)
+        }
     }
 
     fn disassemble(slice: *const [T]) -> (usize, *const ()) {
@@ -99,8 +104,6 @@ impl<T> DynSized for [T] {
         (slice.len(), slice.as_ptr() as *const ())
     }
 }
-
-unsafe impl<T> AssembleSafe for [T] {}
 
 #[test]
 fn test_slice() {
@@ -112,11 +115,13 @@ fn test_slice() {
     assert_eq!(new_slice, slice);
 }
 
-impl DynSized for str {
+unsafe impl DynSized for str {
     type Meta = usize;
 
-    unsafe fn assemble(len: usize, data: *const ()) -> *const str {
-        str::from_utf8_unchecked(slice::from_raw_parts(data as *const u8, len))
+    fn assemble(len: usize, data: *const ()) -> *const str {
+        unsafe {
+            str::from_utf8_unchecked(slice::from_raw_parts(data as *const u8, len))
+        }
     }
 
     fn disassemble(s: *const str) -> (usize, *const ()) {
@@ -125,8 +130,6 @@ impl DynSized for str {
         }
     }
 }
-
-unsafe impl AssembleSafe for str {}
 
 #[test]
 fn test_str() {
@@ -169,10 +172,12 @@ macro_rules! __derive_DynSized_body {
     ($Trait:ty) => {
         type Meta = $crate::Vtable;
 
-        unsafe fn assemble(vtable: $crate::Vtable, data: *const ()) -> *const Self {
-            $crate::mem::transmute(
-                $crate::TraitObject::construct(vtable, data as *mut ())
-            )
+        fn assemble(vtable: $crate::Vtable, data: *const ()) -> *const Self {
+            unsafe {
+                $crate::mem::transmute(
+                    $crate::TraitObject::construct(vtable, data as *mut ())
+                )
+            }
         }
 
         fn disassemble(ptr: *const Self) -> (Self::Meta, *const ()) {
@@ -186,15 +191,15 @@ macro_rules! __derive_DynSized_body {
 }
 
 /// Derives the `DynSized` trait for trait objects.
-/// 
+///
 /// To use:
-/// 
+///
 /// ```
 /// #[macro_use] extern crate dyn_sized;
 /// # fn main() {
 /// trait MyTrait {}
 /// derive_DynSized!(MyTrait);
-/// 
+///
 /// trait MyGenericTrait<'a, T: 'a> {
 ///     fn foo(&'a self) -> T;
 /// }
@@ -202,23 +207,19 @@ macro_rules! __derive_DynSized_body {
 /// derive_DynSized!(MyGenericTrait<'a, T>, 'a, T: 'a);
 /// # }
 /// ```
-/// 
+///
 #[macro_export]
 macro_rules! derive_DynSized {
     ($Trait:ty) => {
-        impl $crate::DynSized for $Trait {
+        unsafe impl $crate::DynSized for $Trait {
             __derive_DynSized_body!($Trait);
         }
-
-        unsafe impl $crate::AssembleSafe for $Trait {}
     };
 
     ($Trait:ty, $($args:tt)+ ) => {
-        impl<$($args)+> $crate::DynSized for $Trait {
+        unsafe impl<$($args)+> $crate::DynSized for $Trait {
             __derive_DynSized_body!($Trait);
         }
-
-        unsafe impl<$($args)+> $crate::AssembleSafe for $Trait {}
     };
 }
 
@@ -252,7 +253,7 @@ pub trait PtrExt {
     type Referent: DynSized + ?Sized;
 
     fn meta(&self) -> <Self::Referent as DynSized>::Meta;
-    
+
     fn data(&self) -> *const ();
 }
 
