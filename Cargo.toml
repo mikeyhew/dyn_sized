@@ -1,6 +1,6 @@
 [package]
 name = "dyn_sized"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Michael Hewson <michael@michaelhewson.ca>"]
 description = "Provides the `DynSized` trait, for working with dynamically sized types"
 repository = "https://github.com/mikeyhew/dyn_sized"
